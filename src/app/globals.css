@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('/fonts/PressStart2P-Regular.woff2') format('woff2');
+  font-display: swap;
+}
+
+html,
+body {
+  height: 100%;
+}
