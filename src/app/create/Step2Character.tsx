@@ -14,9 +14,9 @@ interface Step2CharacterProps {
 export function Step2Character({ draftId, supabase, characterDetails, onChange }: Step2CharacterProps) {
   return (
     <div>
-      <h2 className="mb-1 font-pixel text-sm text-white">who&apos;s this for</h2>
+      <h2 className="mb-1 font-heading text-lg font-semibold text-white">the details</h2>
       <p className="mb-6 text-sm text-white/50">
-        Names, a short description, and a few reference photos so we can pixel-art the two of you accurately.
+        Names, a short description, and a few reference photos so we can pixel-art you all accurately.
       </p>
 
       <label className="mb-4 block text-xs text-white/60">
@@ -36,12 +36,12 @@ export function Step2Character({ draftId, supabase, characterDetails, onChange }
       </label>
 
       <label className="mb-6 block text-xs text-white/60">
-        Tell us about you two
+        Tell us about you all
         <textarea
           value={characterDetails.description}
           onChange={(e) => onChange({ ...characterDetails, description: e.target.value })}
           rows={4}
-          placeholder="Hair, style, anything that makes you two look like you..."
+          placeholder="Hair, style, anything that makes you look like you..."
           className="mt-1 w-full resize-none rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-[#FFB6C1]/50 focus:outline-none"
         />
       </label>

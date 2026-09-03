@@ -19,11 +19,11 @@ export async function StoryGallery() {
 
   return (
     <section className="mx-auto max-w-5xl px-6 py-20">
-      <h2 className="mb-2 font-pixel text-sm text-white">past stories</h2>
-      <p className="mb-8 text-sm text-white/50">A few worlds we&apos;ve already built.</p>
+      <h2 className="mb-2 text-center font-heading text-3xl font-bold text-white">past stories</h2>
+      <p className="mb-10 text-center text-sm text-white/50">A few worlds we&apos;ve already built.</p>
 
       {!stories || stories.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-white/15 p-10 text-center">
+        <div className="rounded-2xl border border-dashed border-white/15 p-10 text-center">
           <p className="text-sm text-white/40">No stories published yet — yours could be the first.</p>
         </div>
       ) : (
@@ -32,9 +32,9 @@ export async function StoryGallery() {
             <Link
               key={story.slug}
               href={`/story/${story.slug}`}
-              className="rounded-xl border border-white/10 p-5 transition-colors hover:border-[#FFB6C1]/40"
+              className="rounded-2xl border border-white/10 p-5 transition-shadow hover:shadow-[0_0_24px_rgba(255,62,165,0.15)]"
             >
-              <p className="font-pixel text-[10px] text-white">{story.title}</p>
+              <p className="font-heading text-sm font-semibold text-white">{story.title}</p>
               <p className="mt-2 text-xs text-white/40">{story.view_count} views</p>
             </Link>
           ))}

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { validateStoryScene } from '@/lib/validateStoryScene';
+import { findPackageByFlags, LOOKALIKE_AVATAR_ADDON } from '@/lib/pricing';
 import type { AssetRow, OrderRow } from '@/types/order';
 import type { Story } from '@/types/story';
 
@@ -27,12 +28,14 @@ export function OrderDetailView({ order, assets, existingStory }: OrderDetailVie
   const [slug, setSlug] = useState(existingStory?.slug ?? slugify(`${order.customer_name}-${order.id.slice(0, 8)}`));
   const [title, setTitle] = useState(existingStory?.title ?? `${order.customer_name}'s story`);
   const [sceneJson, setSceneJson] = useState(existingStory ? JSON.stringify(existingStory.scene_data, null, 2) : '');
+  const [galleryOptIn, setGalleryOptIn] = useState(existingStory?.gallery_opt_in ?? false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [status, setStatus] = useState<'idle' | 'publishing' | 'done' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
 
   const photos = assets.filter((a) => a.asset_type === 'photo_reference');
   const audioAssets = assets.filter((a) => a.asset_type === 'audio_upload');
+  const pkg = findPackageByFlags(order.package_hotspot_count, order.package_has_cutscenes, order.package_has_finale);
 
   async function handlePublish() {
     setValidationError(null);
@@ -66,6 +69,7 @@ export function OrderDetailView({ order, assets, existingStory }: OrderDetailVie
             title,
             scene_data: parsed,
             is_published: true,
+            gallery_opt_in: galleryOptIn,
           },
           { onConflict: 'id' }
         )
@@ -93,19 +97,46 @@ export function OrderDetailView({ order, assets, existingStory }: OrderDetailVie
     <div className="space-y-8">
       <div>
         <p className="font-pixel text-[9px] uppercase tracking-widest text-white/40">order</p>
-        <h1 className="mt-1 font-pixel text-sm text-white">{order.customer_name}</h1>
+        <h1 className="mt-1 font-heading text-xl font-semibold text-white">{order.customer_name}</h1>
         <p className="text-sm text-white/50">{order.customer_email}</p>
         <div className="mt-3 flex flex-wrap gap-2 text-xs text-white/60">
           <span className="rounded-full border border-white/15 px-2 py-0.5">{order.status.replace(/_/g, ' ')}</span>
           <span className="rounded-full border border-white/15 px-2 py-0.5">{order.vibe.replace(/_/g, ' ')}</span>
+          {order.relationship_type && (
+            <span className="rounded-full border border-white/15 px-2 py-0.5">
+              {order.relationship_type.replace(/_/g, ' ')}
+            </span>
+          )}
           {order.price_estimate != null && (
-            <span className="rounded-full border border-white/15 px-2 py-0.5">${order.price_estimate}</span>
+            <span className="rounded-full border border-neon/30 bg-neon/10 px-2 py-0.5">${order.price_estimate}</span>
           )}
           {order.timeline_estimate && (
             <span className="rounded-full border border-white/15 px-2 py-0.5">{order.timeline_estimate}</span>
           )}
         </div>
       </div>
+
+      <section className="rounded-xl border border-white/10 p-4">
+        <h2 className="mb-3 font-pixel text-[10px] text-[#FFB6C1]">package</h2>
+        {pkg ? (
+          <>
+            <p className="text-sm text-white">
+              {pkg.name} — {pkg.hotspotCount} hotspots
+              {pkg.hasCutscenes ? ', cutscenes' : ''}
+              {pkg.hasFinale ? ', finale scene' : ''}
+            </p>
+            {order.has_lookalike_avatar && (
+              <p className="mt-1 text-sm text-white/70">+ Look-Alike Pixel Avatars (+${LOOKALIKE_AVATAR_ADDON})</p>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-white/40">
+            No matching package tier for the stored flags ({order.package_hotspot_count ?? '—'} hotspots, cutscenes:{' '}
+            {String(order.package_has_cutscenes)}, finale: {String(order.package_has_finale)}) — this order may
+            predate the package system.
+          </p>
+        )}
+      </section>
 
       <section className="rounded-xl border border-white/10 p-4">
         <h2 className="mb-3 font-pixel text-[10px] text-[#FFB6C1]">character</h2>
@@ -216,6 +247,22 @@ export function OrderDetailView({ order, assets, existingStory }: OrderDetailVie
           />
         </label>
 
+        <label className="mb-4 flex cursor-pointer items-start gap-2 rounded-lg border border-white/10 p-3 text-xs hover:border-white/25">
+          <input
+            type="checkbox"
+            checked={galleryOptIn}
+            onChange={(e) => setGalleryOptIn(e.target.checked)}
+            className="mt-0.5 accent-neon"
+          />
+          <span>
+            <span className="block text-white">Feature this on the landing page gallery</span>
+            <span className="text-white/40">
+              Leave unchecked to keep the story private-link-only — the customer can still reach it at{' '}
+              /story/{slug || '[slug]'}, it just won&apos;t be listed publicly.
+            </span>
+          </span>
+        </label>
+
         {validationError && <p className="mb-3 text-xs text-red-400">{validationError}</p>}
         {message && (
           <p className={`mb-3 text-xs ${status === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>{message}</p>
@@ -225,7 +272,7 @@ export function OrderDetailView({ order, assets, existingStory }: OrderDetailVie
           type="button"
           onClick={handlePublish}
           disabled={status === 'publishing' || !slug || !sceneJson.trim()}
-          className="w-full rounded-full border border-[#FFB6C1]/50 bg-[#FFB6C1]/10 py-3 font-pixel text-[10px] text-white transition-colors hover:bg-[#FFB6C1]/20 disabled:cursor-not-allowed disabled:opacity-30"
+          className="w-full rounded-full bg-neon py-3 font-heading text-sm font-semibold text-white shadow-[0_0_20px_rgba(255,62,165,0.4)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_0_32px_rgba(255,62,165,0.65)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0"
         >
           {status === 'publishing' ? 'publishing…' : existingStory ? 'update & republish' : 'publish story'}
         </button>

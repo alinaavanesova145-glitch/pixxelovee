@@ -1,36 +1,68 @@
 'use client';
 
-import type { OrderDraft } from '@/types/order';
-import type { PriceEstimate } from '@/lib/pricing';
+import type { OrderDraft, PackageId } from '@/types/order';
+import { LOOKALIKE_AVATAR_ADDON, PACKAGES, packagePrice, packageTimeline } from '@/lib/pricing';
 
 interface Step4EstimateSubmitProps {
   draft: OrderDraft;
-  priceEstimate: PriceEstimate;
   onChange: (partial: Partial<OrderDraft>) => void;
   onSubmit: () => void;
   submitting: boolean;
   errorMessage: string | null;
 }
 
-export function Step4EstimateSubmit({
-  draft,
-  priceEstimate,
-  onChange,
-  onSubmit,
-  submitting,
-  errorMessage,
-}: Step4EstimateSubmitProps) {
-  const canSubmit = draft.customerName.trim().length > 0 && draft.customerEmail.trim().length > 0 && !submitting;
+export function Step4EstimateSubmit({ draft, onChange, onSubmit, submitting, errorMessage }: Step4EstimateSubmitProps) {
+  const total = packagePrice(draft.packageId, draft.hasLookAlikeAvatar);
+  const timeline = packageTimeline(draft.packageId);
+  const canSubmit =
+    draft.packageId !== null &&
+    draft.customerName.trim().length > 0 &&
+    draft.customerEmail.trim().length > 0 &&
+    !submitting;
 
   return (
     <div>
-      <h2 className="mb-1 font-pixel text-sm text-white">your estimate</h2>
-      <p className="mb-6 text-sm text-white/50">Last step — where should we send it?</p>
+      <h2 className="mb-1 font-heading text-lg font-semibold text-white">pick your package</h2>
+      <p className="mb-6 text-sm text-white/50">Every tier is hand-built — pick the size that fits your story.</p>
 
-      <div className="mb-6 rounded-xl border border-[#FFB6C1]/30 bg-[#FFB6C1]/5 p-4">
-        <p className="font-pixel text-lg text-[#FFB6C1]">${priceEstimate.price}</p>
-        <p className="mt-1 text-xs text-white/50">estimated delivery: {priceEstimate.timeline}</p>
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {PACKAGES.map((pkg) => (
+          <button
+            key={pkg.id}
+            type="button"
+            onClick={() => onChange({ packageId: pkg.id as PackageId })}
+            className={`rounded-xl border p-4 text-left transition-colors ${
+              draft.packageId === pkg.id ? 'border-neon bg-neon/10' : 'border-white/10 hover:border-white/25'
+            }`}
+          >
+            <div className="flex items-baseline justify-between">
+              <p className="font-heading text-sm font-semibold text-white">{pkg.name}</p>
+              <p className="font-heading text-sm font-semibold text-[#FFB6C1]">${pkg.price}</p>
+            </div>
+            <p className="mt-2 text-xs text-white/50">{pkg.description}</p>
+          </button>
+        ))}
       </div>
+
+      <label className="mb-6 flex cursor-pointer items-start gap-2 rounded-lg border border-white/10 p-3 text-xs hover:border-white/25">
+        <input
+          type="checkbox"
+          checked={draft.hasLookAlikeAvatar}
+          onChange={(e) => onChange({ hasLookAlikeAvatar: e.target.checked })}
+          className="mt-0.5 accent-neon"
+        />
+        <span>
+          <span className="block text-white">Look-Alike Pixel Avatars — +${LOOKALIKE_AVATAR_ADDON}</span>
+          <span className="text-white/40">Sprites drawn to actually resemble the two of you, not generic characters.</span>
+        </span>
+      </label>
+
+      {draft.packageId && (
+        <div className="mb-6 rounded-xl border border-neon/30 bg-neon/5 p-4">
+          <p className="font-heading text-lg font-semibold text-[#FFB6C1]">${total}</p>
+          <p className="mt-1 text-xs text-white/50">estimated delivery: {timeline}</p>
+        </div>
+      )}
 
       <label className="mb-4 block text-xs text-white/60">
         Your name
@@ -58,7 +90,7 @@ export function Step4EstimateSubmit({
         type="button"
         onClick={onSubmit}
         disabled={!canSubmit}
-        className="w-full rounded-full border border-[#FFB6C1]/50 bg-[#FFB6C1]/10 py-3 font-pixel text-[10px] text-white transition-colors hover:bg-[#FFB6C1]/20 disabled:cursor-not-allowed disabled:opacity-30"
+        className="w-full rounded-full bg-neon py-3 font-heading text-sm font-semibold text-white shadow-[0_0_20px_rgba(255,62,165,0.4)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_0_32px_rgba(255,62,165,0.65)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0"
       >
         {submitting ? 'sending…' : 'send my story request ♥'}
       </button>

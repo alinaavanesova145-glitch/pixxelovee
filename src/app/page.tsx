@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { HeroPixiDemo } from '@/components/landing/HeroPixiDemo';
+import { Hero } from '@/components/landing/Hero';
+import { HowItWorks } from '@/components/landing/HowItWorks';
+import { PackagesSection } from '@/components/landing/PackagesSection';
 import { StoryGallery } from '@/components/landing/StoryGallery';
+import { TrustBadges } from '@/components/landing/TrustBadges';
+import { Testimonials } from '@/components/landing/Testimonials';
 
 export const metadata: Metadata = {
   title: 'pixxelovee — turn a memory into a pixel-art world',
@@ -17,25 +20,12 @@ export const metadata: Metadata = {
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-black">
-      <section className="relative flex h-[80vh] min-h-[520px] flex-col items-center justify-center overflow-hidden">
-        <div className="absolute inset-0">
-          <HeroPixiDemo />
-        </div>
-        <div className="relative z-10 flex flex-col items-center px-6 text-center">
-          <h1 className="mb-4 font-pixel text-lg leading-relaxed text-white sm:text-2xl">pixxelovee</h1>
-          <p className="mb-8 max-w-md text-sm text-white/60 sm:text-base">
-            Turn a real memory into a pixel-art world — ambient music, falling snow, and secrets only they can find.
-          </p>
-          <Link
-            href="/create"
-            className="rounded-full border border-[#FFB6C1]/50 bg-[#FFB6C1]/10 px-6 py-3 font-pixel text-[10px] text-white transition-colors hover:bg-[#FFB6C1]/20"
-          >
-            create your story ♥
-          </Link>
-        </div>
-      </section>
-
+      <Hero />
+      <HowItWorks />
+      <PackagesSection />
       <StoryGallery />
+      <TrustBadges />
+      <Testimonials />
     </main>
   );
 }

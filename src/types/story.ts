@@ -47,4 +47,5 @@ export interface Story {
   scene_data: StoryScene;
   is_published: boolean;
   view_count: number;
+  gallery_opt_in: boolean;
 }

@@ -3,25 +3,28 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { estimate } from '@/lib/pricing';
+import { getPackage, packagePrice, packageTimeline } from '@/lib/pricing';
 import type { OrderDraft } from '@/types/order';
 import { Step1Vibe } from './Step1Vibe';
 import { Step2Character } from './Step2Character';
 import { Step3MusicElements } from './Step3MusicElements';
 import { Step4EstimateSubmit } from './Step4EstimateSubmit';
 
-const STEP_LABELS = ['Vibe', 'Character', 'Music & Magic', 'Estimate'];
+const STEP_LABELS = ['Setup', 'Character', 'Music & Magic', 'Package'];
 
 function emptyDraft(): OrderDraft {
   return {
     customerName: '',
     customerEmail: '',
     vibe: null,
+    relationshipType: null,
     characterDetails: { names: [], description: '', photoAssetPaths: [] },
     musicChoice: null,
     musicAssetPath: null,
     easterEggs: [],
     textPrompts: [],
+    packageId: null,
+    hasLookAlikeAvatar: false,
   };
 }
 
@@ -33,13 +36,12 @@ export default function CreatePage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
-  const priceEstimate = useMemo(() => estimate(draft), [draft]);
 
   const patch = (partial: Partial<OrderDraft>) => setDraft((d) => ({ ...d, ...partial }));
 
   const canAdvance =
     step === 1
-      ? draft.vibe !== null
+      ? draft.vibe !== null && draft.relationshipType !== null
       : step === 2
         ? draft.characterDetails.description.trim().length > 0
         : true;
@@ -48,18 +50,24 @@ export default function CreatePage() {
     setStatus('submitting');
     setErrorMessage(null);
     try {
+      const pkg = getPackage(draft.packageId);
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
           customer_name: draft.customerName,
           customer_email: draft.customerEmail,
           vibe: draft.vibe,
+          relationship_type: draft.relationshipType,
           character_details: draft.characterDetails,
           music_choice: draft.musicChoice,
           easter_eggs: draft.easterEggs,
           text_prompts: draft.textPrompts,
-          price_estimate: priceEstimate.price,
-          timeline_estimate: priceEstimate.timeline,
+          package_hotspot_count: pkg?.hotspotCount ?? null,
+          package_has_cutscenes: pkg?.hasCutscenes ?? false,
+          package_has_finale: pkg?.hasFinale ?? false,
+          has_lookalike_avatar: draft.hasLookAlikeAvatar,
+          price_estimate: packagePrice(draft.packageId, draft.hasLookAlikeAvatar),
+          timeline_estimate: packageTimeline(draft.packageId),
         })
         .select('id')
         .single();
@@ -102,7 +110,7 @@ export default function CreatePage() {
   if (status === 'success') {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-black px-6 text-center">
-        <p className="font-pixel text-sm text-[#FFB6C1]">your story is in the queue ♥</p>
+        <p className="font-heading text-xl font-semibold text-[#FFB6C1]">your story is in the queue ♥</p>
         <p className="max-w-sm text-white/70">
           We&apos;ll email {draft.customerEmail} once your pixel world is ready to send.
         </p>
@@ -134,7 +142,9 @@ export default function CreatePage() {
             exit={{ opacity: 0, x: -16 }}
             transition={{ duration: 0.25 }}
           >
-            {step === 1 && <Step1Vibe vibe={draft.vibe} onChange={(vibe) => patch({ vibe })} />}
+            {step === 1 && (
+              <Step1Vibe vibe={draft.vibe} relationshipType={draft.relationshipType} onChange={patch} />
+            )}
             {step === 2 && (
               <Step2Character
                 draftId={draftId}
@@ -157,7 +167,6 @@ export default function CreatePage() {
             {step === 4 && (
               <Step4EstimateSubmit
                 draft={draft}
-                priceEstimate={priceEstimate}
                 onChange={patch}
                 onSubmit={handleSubmit}
                 submitting={status === 'submitting'}
@@ -180,7 +189,7 @@ export default function CreatePage() {
               type="button"
               onClick={() => setStep((s) => Math.min(4, s + 1))}
               disabled={!canAdvance}
-              className="rounded-full border border-[#FFB6C1]/40 px-5 py-2 font-pixel text-[10px] text-white transition-colors hover:bg-[#FFB6C1]/10 disabled:cursor-not-allowed disabled:opacity-30"
+              className="rounded-full bg-neon px-6 py-2 font-heading text-sm font-semibold text-white shadow-[0_0_20px_rgba(255,62,165,0.4)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_0_32px_rgba(255,62,165,0.65)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0"
             >
               next
             </button>

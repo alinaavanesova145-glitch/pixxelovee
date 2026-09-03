@@ -54,7 +54,7 @@ export function Step3MusicElements({
 
   return (
     <div>
-      <h2 className="mb-1 font-pixel text-sm text-white">music & magic</h2>
+      <h2 className="mb-1 font-heading text-lg font-semibold text-white">music & magic</h2>
       <p className="mb-6 text-sm text-white/50">Set the soundtrack and choose what&apos;s clickable.</p>
 
       <p className="mb-2 text-xs text-white/60">Background music</p>

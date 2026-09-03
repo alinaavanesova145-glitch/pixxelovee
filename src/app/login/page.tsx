@@ -30,7 +30,7 @@ export default function LoginPage() {
   if (status === 'sent') {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-black px-6 text-center">
-        <p className="font-pixel text-sm text-[#FFB6C1]">check your inbox ♥</p>
+        <p className="font-heading text-xl font-semibold text-[#FFB6C1]">check your inbox ♥</p>
         <p className="max-w-sm text-sm text-white/60">
           We sent a sign-in link to {email}. Open it on this device to reach the admin dashboard.
         </p>
@@ -41,7 +41,7 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-black px-6">
       <div className="w-full max-w-sm">
-        <h1 className="mb-1 font-pixel text-sm text-white">admin sign-in</h1>
+        <h1 className="mb-1 font-heading text-lg font-semibold text-white">admin sign-in</h1>
         <p className="mb-6 text-sm text-white/50">Enter your email for a magic link.</p>
 
         <form onSubmit={handleSubmit}>
@@ -61,7 +61,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={status === 'sending' || !email}
-            className="w-full rounded-full border border-[#FFB6C1]/50 bg-[#FFB6C1]/10 py-3 font-pixel text-[10px] text-white transition-colors hover:bg-[#FFB6C1]/20 disabled:cursor-not-allowed disabled:opacity-30"
+            className="w-full rounded-full bg-neon py-3 font-heading text-sm font-semibold text-white shadow-[0_0_20px_rgba(255,62,165,0.4)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_0_32px_rgba(255,62,165,0.65)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0"
           >
             {status === 'sending' ? 'sending…' : 'send magic link'}
           </button>

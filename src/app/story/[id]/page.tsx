@@ -11,12 +11,11 @@ export default async function StoryPage({ params }: PageProps) {
   const { id } = await params;
   const supabase = await createSupabaseServerClient();
 
-  const { data: story } = await supabase
-    .from('stories')
-    .select('id, slug, title, scene_data, is_published, view_count')
-    .eq('slug', id)
-    .eq('is_published', true)
-    .single<Story>();
+  // A story that isn't opted into the public gallery must still load for
+  // anyone with the actual link — this RPC checks is_published only, not
+  // gallery_opt_in (unlike a direct `.from('stories')` select, which the
+  // RLS policy now restricts to opted-in rows).
+  const { data: story } = await supabase.rpc('get_published_story_by_slug', { slug: id }).single<Story>();
 
   if (!story) notFound();
 
@@ -34,12 +33,7 @@ export async function generateMetadata({ params }: PageProps) {
   const { id } = await params;
   const supabase = await createSupabaseServerClient();
 
-  const { data: story } = await supabase
-    .from('stories')
-    .select('title')
-    .eq('slug', id)
-    .eq('is_published', true)
-    .single();
+  const { data: story } = await supabase.rpc('get_published_story_by_slug', { slug: id }).single<Story>();
 
   return {
     title: story?.title ? `${story.title} — pixxelovee` : 'A pixel story — pixxelovee',

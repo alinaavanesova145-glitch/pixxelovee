@@ -34,7 +34,7 @@ export default async function OrderDetailPage({ params }: PageProps) {
   if (order.story_id) {
     const { data } = await supabase
       .from('stories')
-      .select('id, slug, title, scene_data, is_published, view_count')
+      .select('id, slug, title, scene_data, is_published, view_count, gallery_opt_in')
       .eq('id', order.story_id)
       .single<Story>();
     existingStory = data;

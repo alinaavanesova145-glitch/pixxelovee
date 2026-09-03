@@ -43,7 +43,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
   return (
     <main className="min-h-screen bg-black px-6 py-12">
       <div className="mx-auto max-w-4xl">
-        <h1 className="mb-8 font-pixel text-sm text-white">orders</h1>
+        <h1 className="mb-8 font-heading text-lg font-semibold text-white">orders</h1>
 
         <div className="mb-6 flex flex-wrap gap-2">
           {STATUSES.map((s) => (

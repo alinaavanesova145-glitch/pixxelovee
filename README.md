@@ -2,9 +2,15 @@
 
 Custom 16-bit pixel-art memory scenes, delivered as a link. The full loop is
 implemented: landing page → order builder (`/create`) → admin review/publish
-(`/login`, `/admin`) → the `/story/[id]` interactive viewer. Real pixel art,
-audio, and fonts are still being sourced separately (see `public/scenes`,
-`public/fonts`, `public/sfx`) — nothing invents placeholders for those.
+(`/login`, `/admin`) → the `/story/[id]` interactive viewer. Pricing is four
+named packages (Essential Quest / Animated Story Quest / Expanded Quest /
+The Ultimate Story, see `src/lib/pricing.ts`) plus a look-alike-avatar
+add-on, built for couples, best friends, siblings, or long-distance friends
+alike. Typography is `next/font/google` (Fredoka for headings, Quicksand for
+body/UI, Press Start 2P demoted to small accent use only — logo, step
+numbers, tiny tags). Real pixel art, audio, and scene sprites are still
+being sourced separately (see `public/scenes`, `public/sfx`) — nothing
+invents placeholders for those.
 
 ## Project structure
 
@@ -18,20 +24,23 @@ pixxelovee/
 ├── supabase/
 │   ├── schema.sql                      # ✅ orders / stories / assets / profiles + RLS + storage buckets
 │   └── migrations/
-│       └── 20260903000000_tighten_assets_insert_policy.sql  # ✅ run after schema.sql
+│       ├── 20260903000000_tighten_assets_insert_policy.sql   # ✅ run after schema.sql
+│       ├── 20260903000100_add_package_pricing_columns.sql    # ✅ package_hotspot_count etc. on orders
+│       ├── 20260903000200_add_relationship_type.sql          # ✅ relationship_type on orders
+│       └── 20260903000300_gallery_opt_in.sql                 # ✅ see Privacy note below — NOT yet run live
 ├── public/
-│   ├── fonts/                          # Press Start 2P woff2 — not sourced yet, folder empty
 │   ├── scenes/<vibe>/                  # background + hotspot sprite art — not sourced yet, folders empty
 │   └── sfx/                            # not sourced yet, folder empty
+│       (fonts are no longer manually hosted — next/font/google self-hosts Fredoka/Quicksand/Press Start 2P)
 └── src/
     ├── middleware.ts                   # ✅ gates /admin on profiles.is_admin (must live under src/, not root)
     ├── app/
-    │   ├── layout.tsx                  # ✅ root layout + site-wide Open Graph metadata
-    │   ├── globals.css                 # ✅ Tailwind + pixel font
+    │   ├── layout.tsx                  # ✅ root layout, next/font/google variables, site-wide Open Graph
+    │   ├── globals.css                 # ✅ Tailwind base only — fonts now loaded via layout.tsx
     │   ├── icon.tsx                    # ✅ code-generated favicon (no binary asset needed)
     │   ├── robots.ts                   # ✅ minimal robots.txt, disallows /admin
     │   ├── not-found.tsx               # ✅ styled 404
-    │   ├── page.tsx                    # ✅ landing — hero Pixi demo, gallery, CTA
+    │   ├── page.tsx                    # ✅ landing — composes the sections below
     │   ├── create/                     # ✅ 4-step order builder (Step1Vibe … Step4EstimateSubmit)
     │   ├── login/page.tsx              # ✅ magic-link sign-in for the admin
     │   ├── story/[id]/
@@ -42,11 +51,16 @@ pixxelovee/
     │       ├── page.tsx                # ✅ orders list with status filtering
     │       └── orders/[orderId]/
     │           ├── page.tsx            # ✅ fetches order + signed asset URLs + linked story
-    │           └── OrderDetailView.tsx # ✅ review photos/audio, edit scene JSON, publish
+    │           └── OrderDetailView.tsx # ✅ review photos/audio, package/add-ons, edit scene JSON, publish
     ├── components/
     │   ├── landing/
+    │   │   ├── Hero.tsx                # ✅ headline + CTA, HeroPixiDemo dimmed to a background layer
     │   │   ├── HeroPixiDemo.tsx        # ✅ procedural Pixi shapes only — no image assets required
-    │   │   └── StoryGallery.tsx        # ✅ reads published stories, graceful empty state
+    │   │   ├── HowItWorks.tsx          # ✅ 4-step tile pattern
+    │   │   ├── PackagesSection.tsx     # ✅ the four package tiers as cards
+    │   │   ├── StoryGallery.tsx        # ✅ reads published stories, graceful empty state
+    │   │   ├── TrustBadges.tsx         # ✅ real language only, see note below
+    │   │   └── Testimonials.tsx        # ✅ empty/placeholder state until real reviews exist
     │   ├── create/
     │   │   └── FileDropzone.tsx        # ✅ drag-drop direct-to-Storage uploader, keyboard-operable
     │   └── story/
@@ -59,16 +73,67 @@ pixxelovee/
     │   │   └── server.ts               # ✅ server component client
     │   ├── audio/AudioManager.ts       # ✅ Web Audio API wrapper
     │   ├── pixi/ambientEffects.ts      # ✅ rain/snow/firefly particles
-    │   ├── pricing.ts                  # ✅ order price/timeline estimate
+    │   ├── pricing.ts                  # ✅ the 4 package tiers + avatar add-on (see note below on pricing math)
     │   └── validateStoryScene.ts       # ✅ structural check before an admin publishes scene JSON
     └── types/
         ├── story.ts                   # ✅ StoryScene / Hotspot shape
-        └── order.ts                   # ✅ OrderDraft, OrderRow, AssetRow shapes
+        └── order.ts                   # ✅ OrderDraft, OrderRow, AssetRow, RelationshipType shapes
 ```
 
-Everything above is now built. What's left is non-coding: real pixel art/audio/fonts,
-a live Supabase project with the schema + migration run, and an end-to-end pass with
-real data (see `NEXT_STEPS.md` for the fuller punch list).
+Everything above is now built. What's left is non-coding: real pixel art/audio,
+a live Supabase project with the schema + all three migrations run, and an
+end-to-end pass with real data (see `NEXT_STEPS.md` for the fuller punch list).
+
+**Pricing math note:** `REDESIGN_AND_PACKAGES.md`'s formula ("$40 base + $5/hotspot
+for 6–10") doesn't actually reconcile to its own four listed prices — at $5/hotspot,
+10 hotspots computes to $65, colliding with Animated Story Quest's price, and The
+Ultimate Story computes to $95, not $100. `lib/pricing.ts` treats the four *named*
+prices as ground truth (they're described as real, tested pricing) and looks them
+up directly rather than deriving from a per-hotspot rate — the real numbers only
+reconcile at $6/hotspot for the 6–10 range, not $5.
+
+**Trust badge note (resolved):** an earlier pass flagged that "Private, Unlisted
+Story Link" wasn't accurate, since `StoryGallery` publicly listed every published
+story. This is now actually fixed at the RLS level, not just softened in copy — see
+**Privacy: gallery opt-in** below. "Delivered As Your Own Story Link" is kept as
+the trust badge wording either way; feel free to restore a stronger privacy claim
+in that badge now that it's true.
+
+## Privacy: gallery opt-in (migration `20260903000300`)
+
+Being "not shown in the landing page gallery" was never the same as being
+private — the old `stories: public read published` RLS policy let anyone with the
+public anon key list every published story directly via the Supabase API (real
+names, photos, personal messages included), regardless of what the UI chose to
+display. Fixed:
+
+- `stories.gallery_opt_in` (boolean, default `false`) — a story is private-link-only
+  unless an admin explicitly opts it into the public gallery.
+- The public SELECT policy now requires `is_published = true AND gallery_opt_in =
+  true`. Admin read/insert/update/delete policies are unaffected — admins still see
+  every story regardless of opt-in.
+- A new security-definer RPC, `get_published_story_by_slug(slug)`, lets the
+  `/story/[id]` viewer load any published story by its exact slug — opted into the
+  gallery or not — the same way `increment_story_view` already bypasses RLS for the
+  view counter. `src/app/story/[id]/page.tsx` calls this RPC instead of a direct
+  `.from('stories')` select (in both the page body and `generateMetadata`).
+- `OrderDetailView.tsx`'s publish flow has a "Feature this on the landing page
+  gallery" checkbox, unchecked by default, that sets `gallery_opt_in`. Editing an
+  already-published story prefills the checkbox from its current value rather than
+  silently resetting it on republish.
+- `StoryGallery.tsx` needed no code change — it already selects `is_published`
+  stories through the anon-key server client (confirmed: `SUPABASE_SERVICE_ROLE_KEY`
+  is never imported anywhere in `src/`, so nothing bypasses RLS), and the tightened
+  policy now naturally limits that query to opted-in rows.
+
+**This migration has not been run against the live project yet** — confirmed via a
+direct REST check: `stories.gallery_opt_in` doesn't exist and
+`get_published_story_by_slug` isn't found in the schema cache. Until it's run,
+`/story/[id]` fails safe (renders "not found" rather than erroring, since a missing
+RPC returns an error object, not a thrown exception) instead of crashing. Run
+`supabase/migrations/20260903000300_gallery_opt_in.sql` in the SQL editor, then a
+direct anon `GET /rest/v1/stories?select=id` should return `[]` for a
+non-opted-in story while its `/story/[slug]` page still loads.
 
 Build config that a `create-next-app` scaffold normally generates
 (`tsconfig.json`, `next.config.js`, `postcss.config.js`, `.gitignore`) has
@@ -143,8 +208,10 @@ Then drop in the files from this delivery (`supabase/schema.sql`,
 2. **SQL Editor → New query** → paste `supabase/schema.sql` → **Run**. This
    creates `orders`, `stories`, `assets`, `profiles`, RLS policies, and the
    three storage buckets (`photo-references`, `story-assets`, `audio-uploads`).
-   Then run each file under `supabase/migrations/` in order (currently just
-   one, tightening the `assets` insert policy).
+   Then run each file under `supabase/migrations/` in order (four so far:
+   tightening the `assets` insert policy, adding the package pricing
+   columns, adding `relationship_type`, and the gallery opt-in privacy fix —
+   see below).
 3. Sign in once as yourself (via a magic-link flow on `/login`, or by adding
    yourself directly under **Authentication → Users → Add user**), then
    promote your own row to admin:
