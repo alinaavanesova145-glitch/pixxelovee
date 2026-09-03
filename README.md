@@ -1,86 +1,99 @@
 # pixxelovee
 
-Custom 16-bit pixel-art memory scenes, delivered as a link. Implemented so
-far: **DB schema**, **admin auth gate**, the **`/story/[id]` interactive
-viewer**, and the **order builder** (`/create`). Landing page and admin
-dashboard are still stubbed with an obvious place to go — see Build order in
-the agent prompt this project is being driven from.
+Custom 16-bit pixel-art memory scenes, delivered as a link. The full loop is
+implemented: landing page → order builder (`/create`) → admin review/publish
+(`/login`, `/admin`) → the `/story/[id]` interactive viewer. Real pixel art,
+audio, and fonts are still being sourced separately (see `public/scenes`,
+`public/fonts`, `public/sfx`) — nothing invents placeholders for those.
 
 ## Project structure
 
 ```
 pixxelovee/
 ├── README.md
+├── NEXT_STEPS.md                       # analysis + non-coding to-dos, written mid-build
 ├── package.json
 ├── tailwind.config.ts
-├── middleware.ts                       # ✅ gates /admin on profiles.is_admin
 ├── .env.example
 ├── supabase/
-│   └── schema.sql                      # ✅ orders / stories / assets + RLS + storage buckets
+│   ├── schema.sql                      # ✅ orders / stories / assets / profiles + RLS + storage buckets
+│   └── migrations/
+│       └── 20260903000000_tighten_assets_insert_policy.sql  # ✅ run after schema.sql
 ├── public/
-│   ├── fonts/                          # Press Start 2P / Pixelify Sans woff2
-│   ├── scenes/
-│   │   ├── cozy-room/
-│   │   ├── sunset-roof/
-│   │   ├── cyberpunk-alley/
-│   │   └── rainy-coffee-shop/          # background + hotspot sprite art per vibe
-│   └── sfx/
+│   ├── fonts/                          # Press Start 2P woff2 — not sourced yet, folder empty
+│   ├── scenes/<vibe>/                  # background + hotspot sprite art — not sourced yet, folders empty
+│   └── sfx/                            # not sourced yet, folder empty
 └── src/
+    ├── middleware.ts                   # ✅ gates /admin on profiles.is_admin (must live under src/, not root)
     ├── app/
-    │   ├── layout.tsx                  # ✅ root layout
+    │   ├── layout.tsx                  # ✅ root layout + site-wide Open Graph metadata
     │   ├── globals.css                 # ✅ Tailwind + pixel font
-    │   ├── page.tsx                    # ⬜ landing page (hero Pixi demo, gallery, CTA)
-    │   ├── create/
-    │   │   ├── page.tsx                # ✅ implemented — order builder shell (4-step wizard state)
-    │   │   ├── Step1Vibe.tsx           # ✅ implemented — vibe & atmosphere picker
-    │   │   ├── Step2Character.tsx      # ✅ implemented — character form + drag-drop upload
-    │   │   ├── Step3MusicElements.tsx  # ✅ implemented — music + easter eggs + secret-message prompts
-    │   │   └── Step4EstimateSubmit.tsx # ✅ implemented — price/timeline estimate + submit
+    │   ├── icon.tsx                    # ✅ code-generated favicon (no binary asset needed)
+    │   ├── robots.ts                   # ✅ minimal robots.txt, disallows /admin
+    │   ├── not-found.tsx               # ✅ styled 404
+    │   ├── page.tsx                    # ✅ landing — hero Pixi demo, gallery, CTA
+    │   ├── create/                     # ✅ 4-step order builder (Step1Vibe … Step4EstimateSubmit)
+    │   ├── login/page.tsx              # ✅ magic-link sign-in for the admin
     │   ├── story/[id]/
-    │   │   ├── page.tsx                # ✅ implemented — fetches the published story, renders viewer
-    │   │   └── StoryViewer.tsx         # ✅ implemented — Pixi.js canvas + Web Audio API
-    │   ├── admin/
-    │   │   ├── page.tsx                # ⬜ orders list
-    │   │   └── orders/[orderId]/page.tsx  # ⬜ review photos, paste/edit scene_data JSON, publish
-    │   └── login/page.tsx              # ⬜ magic-link sign-in for the admin
+    │   │   ├── page.tsx                # ✅ fetches the published story, renders viewer
+    │   │   ├── loading.tsx             # ✅ styled loading state (see note below on notFound() + streaming)
+    │   │   └── StoryViewer.tsx         # ✅ Pixi.js canvas + Web Audio API
+    │   └── admin/
+    │       ├── page.tsx                # ✅ orders list with status filtering
+    │       └── orders/[orderId]/
+    │           ├── page.tsx            # ✅ fetches order + signed asset URLs + linked story
+    │           └── OrderDetailView.tsx # ✅ review photos/audio, edit scene JSON, publish
     ├── components/
     │   ├── landing/
-    │   │   ├── HeroPixiDemo.tsx        # ⬜ small looping Pixi.js room for the hero section
-    │   │   └── StoryGallery.tsx        # ⬜ scroll showcase of past stories
+    │   │   ├── HeroPixiDemo.tsx        # ✅ procedural Pixi shapes only — no image assets required
+    │   │   └── StoryGallery.tsx        # ✅ reads published stories, graceful empty state
     │   ├── create/
-    │   │   └── FileDropzone.tsx        # ✅ implemented — drag-drop direct-to-Storage uploader
+    │   │   └── FileDropzone.tsx        # ✅ drag-drop direct-to-Storage uploader, keyboard-operable
     │   └── story/
-    │       ├── AudioUnlockOverlay.tsx  # ✅ implemented
-    │       ├── SecretMessageModal.tsx  # ✅ implemented
-    │       └── StoryFooter.tsx         # ✅ implemented
+    │       ├── AudioUnlockOverlay.tsx  # ✅
+    │       ├── SecretMessageModal.tsx  # ✅
+    │       └── StoryFooter.tsx         # ✅
     ├── lib/
     │   ├── supabase/
-    │   │   ├── client.ts               # ✅ implemented — browser client
-    │   │   └── server.ts               # ✅ implemented — server component client
-    │   ├── audio/AudioManager.ts       # ✅ implemented — Web Audio API wrapper
-    │   ├── pixi/ambientEffects.ts      # ✅ implemented — rain/snow/firefly particles
-    │   └── pricing.ts                  # ✅ implemented — order price/timeline estimate
+    │   │   ├── client.ts               # ✅ browser client
+    │   │   └── server.ts               # ✅ server component client
+    │   ├── audio/AudioManager.ts       # ✅ Web Audio API wrapper
+    │   ├── pixi/ambientEffects.ts      # ✅ rain/snow/firefly particles
+    │   ├── pricing.ts                  # ✅ order price/timeline estimate
+    │   └── validateStoryScene.ts       # ✅ structural check before an admin publishes scene JSON
     └── types/
-        ├── story.ts                   # ✅ implemented — StoryScene / Hotspot shape
-        └── order.ts                   # ✅ implemented — OrderDraft shape for the builder
+        ├── story.ts                   # ✅ StoryScene / Hotspot shape
+        └── order.ts                   # ✅ OrderDraft, OrderRow, AssetRow shapes
 ```
 
-`⬜` files are intentionally left as scaffolding — they follow directly from
-the schema and the viewer's `StoryScene` type, but weren't asked for in this
-pass.
+Everything above is now built. What's left is non-coding: real pixel art/audio/fonts,
+a live Supabase project with the schema + migration run, and an end-to-end pass with
+real data (see `NEXT_STEPS.md` for the fuller punch list).
 
 Build config that a `create-next-app` scaffold normally generates
 (`tsconfig.json`, `next.config.js`, `postcss.config.js`, `.gitignore`) has
 been added by hand so the project actually runs — verified with `tsc --noEmit`
-and a local `next dev` smoke test.
+and a local `next dev` smoke test against a real (empty) Supabase project.
+
+**Known quirk found during that test:** `/story/[id]` has a `loading.tsx`,
+which makes Next.js stream the response. For an unknown slug, the page's own
+`notFound()` call still renders the styled not-found content correctly, but
+because the 200 status was already flushed with the initial streamed shell,
+the HTTP status code stays 200 instead of becoming 404. This is a known
+Next.js App Router streaming/`notFound()` interaction, not a bug in this
+code — removing `loading.tsx` would fix the status code but lose the styled
+loading state. Left as-is; worth knowing if a search engine or link-preview
+bot ever depends on the real status code for a dead story link.
 
 ## How a story gets built
 
-The admin dashboard doesn't need a custom scene editor to launch: an admin
-builds a `StoryScene` JSON object by hand (see `src/types/story.ts`), uploads
-the background/sprite/sfx art to the public `story-assets` bucket, and pastes
-the JSON into a new row's `scene_data` column. The `/story/[id]` viewer reads
-that JSON generically — new stories ship without touching viewer code.
+An admin reviews an order at `/admin/orders/[orderId]`, uploads the
+background/sprite/sfx art to the public `story-assets` bucket by hand, then
+pastes a `StoryScene` JSON object (see `src/types/story.ts`) into that page's
+scene editor — `src/lib/validateStoryScene.ts` catches structural mistakes
+before it saves. Publishing upserts the `stories` row and links it back to
+the order. The `/story/[id]` viewer reads that JSON generically — new
+stories ship without touching viewer code.
 
 ```json
 {
@@ -128,8 +141,10 @@ Then drop in the files from this delivery (`supabase/schema.sql`,
 1. supabase.com → **New project** (free tier) → note the project URL and anon
    key from **Project Settings → API**.
 2. **SQL Editor → New query** → paste `supabase/schema.sql` → **Run**. This
-   creates `orders`, `stories`, `assets`, RLS policies, and the three storage
-   buckets (`photo-references`, `story-assets`, `audio-uploads`).
+   creates `orders`, `stories`, `assets`, `profiles`, RLS policies, and the
+   three storage buckets (`photo-references`, `story-assets`, `audio-uploads`).
+   Then run each file under `supabase/migrations/` in order (currently just
+   one, tightening the `assets` insert policy).
 3. Sign in once as yourself (via a magic-link flow on `/login`, or by adding
    yourself directly under **Authentication → Users → Add user**), then
    promote your own row to admin:

@@ -3,8 +3,17 @@ import type { ReactNode } from 'react';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'pixxelovee',
+  title: {
+    default: 'pixxelovee',
+    template: '%s — pixxelovee',
+  },
   description: 'Turn a memory into a pixel-art world.',
+  openGraph: {
+    siteName: 'pixxelovee',
+    title: 'pixxelovee',
+    description: 'Turn a memory into a pixel-art world.',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

@@ -87,6 +87,12 @@ export function FileDropzone({
           if (e.dataTransfer.files.length) void uploadFiles(e.dataTransfer.files);
         }}
         onClick={() => inputRef.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            inputRef.current?.click();
+          }
+        }}
         role="button"
         tabIndex={0}
         className={`cursor-pointer rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
