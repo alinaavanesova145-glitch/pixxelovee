@@ -7,7 +7,8 @@ import Image from 'next/image';
  * Real footage from Alina's own pixel-art gifts — not stock art, not a
  * template. Two different projects so far ("A Little Pixel World For You"
  * and "Vows & Vendettas"); add more here as they come in, the rotation
- * picks them up automatically.
+ * picks them up automatically. Order here is display order — first entry
+ * is what shows on load and the first dot.
  */
 interface ShowcaseImage {
   src: string;
@@ -17,14 +18,14 @@ interface ShowcaseImage {
 
 const SHOWCASE_IMAGES: ShowcaseImage[] = [
   {
-    src: '/showcase/preview-1.png',
-    alt: 'A pixel-art girl standing alone between two trees in a sunny park world, part of a real pixxelovee gift story',
-    caption: 'an actual pixxelovee gift, mid-story',
-  },
-  {
     src: '/showcase/preview-2.webp',
     alt: 'Two pixel-art characters at a dinner table facing a dialogue choice — Pass the Salt, Draw Weapon, or Toast to Anniversary — from a real pixxelovee gift',
-    caption: 'another pixxelovee gift — dinner turns tense',
+    caption: 'a pixxelovee gift — dinner turns tense',
+  },
+  {
+    src: '/showcase/preview-1.png',
+    alt: 'A pixel-art girl standing alone between two trees in a sunny park world, part of a real pixxelovee gift story',
+    caption: 'another pixxelovee gift, mid-story',
   },
   {
     src: '/showcase/preview-3.webp',
