@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { getPackage, packagePrice, packageTimeline } from '@/lib/pricing';
 import type { OrderDraft } from '@/types/order';
@@ -11,6 +11,16 @@ import { Step3MusicElements } from './Step3MusicElements';
 import { Step4EstimateSubmit } from './Step4EstimateSubmit';
 
 const STEP_LABELS = ['Setup', 'Character', 'Music & Magic', 'Package'];
+// Plain time-based debounce against double-click double-advancing the
+// wizard — intentionally NOT tied to any framer-motion callback. The old
+// AnimatePresence exit/enter cycle could hang mid-animation (confirmed via
+// manual double-click testing: opacity/transform frozen partway,
+// onExitComplete never firing, "next" permanently disabled). Removing
+// AnimatePresence and giving each step's motion.div only a mount-time
+// `initial`/`animate` (no `exit`) means a step change fully unmounts the
+// old instance rather than coordinating an exit with it — there's nothing
+// left to hang on.
+const CLICK_COOLDOWN_MS = 300;
 
 function emptyDraft(): OrderDraft {
   return {
@@ -30,10 +40,19 @@ function emptyDraft(): OrderDraft {
 
 export default function CreatePage() {
   const [step, setStep] = useState(1);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [draft, setDraft] = useState<OrderDraft>(emptyDraft);
   const [draftId] = useState(() => crypto.randomUUID());
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const cooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (cooldownRef.current) clearTimeout(cooldownRef.current);
+    },
+    []
+  );
 
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
@@ -46,14 +65,33 @@ export default function CreatePage() {
         ? draft.characterDetails.description.trim().length > 0
         : true;
 
+  function goToStep(next: (s: number) => number) {
+    setIsTransitioning(true);
+    setStep(next);
+    if (cooldownRef.current) clearTimeout(cooldownRef.current);
+    cooldownRef.current = setTimeout(() => setIsTransitioning(false), CLICK_COOLDOWN_MS);
+  }
+
   async function handleSubmit() {
     setStatus('submitting');
     setErrorMessage(null);
     try {
       const pkg = getPackage(draft.packageId);
-      const { data: order, error: orderError } = await supabase
+      // Insert without .select().single() -- anon has no SELECT policy on
+      // orders (by design: only admins can read orders), and Postgres RLS
+      // gates the implicit RETURNING/select-after-insert using SELECT
+      // policy semantics, not just the INSERT policy's WITH CHECK. That
+      // combination throws "new row violates row-level security policy"
+      // even though the insert itself is fully permitted -- confirmed via
+      // a direct fetch to /rest/v1/orders that isolated the failure to the
+      // trailing .select('id'), not the insert or the RLS policy config.
+      // Generating the id client-side sidesteps needing to read the row
+      // back at all.
+      const newOrderId = crypto.randomUUID();
+      const { error: orderError } = await supabase
         .from('orders')
         .insert({
+          id: newOrderId,
           customer_name: draft.customerName,
           customer_email: draft.customerEmail,
           vibe: draft.vibe,
@@ -68,15 +106,13 @@ export default function CreatePage() {
           has_lookalike_avatar: draft.hasLookAlikeAvatar,
           price_estimate: packagePrice(draft.packageId, draft.hasLookAlikeAvatar),
           timeline_estimate: packageTimeline(draft.packageId),
-        })
-        .select('id')
-        .single();
+        });
 
-      if (orderError || !order) throw orderError ?? new Error('Order insert failed');
+      if (orderError) throw orderError;
 
       const assetRows = [
         ...draft.characterDetails.photoAssetPaths.map((path) => ({
-          order_id: order.id,
+          order_id: newOrderId,
           asset_type: 'photo_reference',
           storage_bucket: 'photo-references',
           storage_path: path,
@@ -85,7 +121,7 @@ export default function CreatePage() {
         ...(draft.musicAssetPath
           ? [
               {
-                order_id: order.id,
+                order_id: newOrderId,
                 asset_type: 'audio_upload',
                 storage_bucket: 'audio-uploads',
                 storage_path: draft.musicAssetPath,
@@ -134,61 +170,59 @@ export default function CreatePage() {
           ))}
         </ol>
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 16 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -16 }}
-            transition={{ duration: 0.25 }}
-          >
-            {step === 1 && (
-              <Step1Vibe vibe={draft.vibe} relationshipType={draft.relationshipType} onChange={patch} />
-            )}
-            {step === 2 && (
-              <Step2Character
-                draftId={draftId}
-                supabase={supabase}
-                characterDetails={draft.characterDetails}
-                onChange={(characterDetails) => patch({ characterDetails })}
-              />
-            )}
-            {step === 3 && (
-              <Step3MusicElements
-                draftId={draftId}
-                supabase={supabase}
-                musicChoice={draft.musicChoice}
-                musicAssetPath={draft.musicAssetPath}
-                easterEggs={draft.easterEggs}
-                textPrompts={draft.textPrompts}
-                onChange={patch}
-              />
-            )}
-            {step === 4 && (
-              <Step4EstimateSubmit
-                draft={draft}
-                onChange={patch}
-                onSubmit={handleSubmit}
-                submitting={status === 'submitting'}
-                errorMessage={errorMessage}
-              />
-            )}
-          </motion.div>
-        </AnimatePresence>
+        <motion.div
+          key={step}
+          initial={{ opacity: 0, x: 16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.25 }}
+        >
+          {step === 1 && (
+            <Step1Vibe vibe={draft.vibe} relationshipType={draft.relationshipType} onChange={patch} />
+          )}
+          {step === 2 && (
+            <Step2Character
+              draftId={draftId}
+              supabase={supabase}
+              characterDetails={draft.characterDetails}
+              onChange={(characterDetails) => patch({ characterDetails })}
+            />
+          )}
+          {step === 3 && (
+            <Step3MusicElements
+              draftId={draftId}
+              supabase={supabase}
+              musicChoice={draft.musicChoice}
+              musicAssetPath={draft.musicAssetPath}
+              easterEggs={draft.easterEggs}
+              textPrompts={draft.textPrompts}
+              onChange={patch}
+            />
+          )}
+          {step === 4 && (
+            <Step4EstimateSubmit
+              draft={draft}
+              onChange={patch}
+              onSubmit={handleSubmit}
+              submitting={status === 'submitting'}
+              errorMessage={errorMessage}
+            />
+          )}
+        </motion.div>
 
         <div className="mt-10 flex justify-between">
           <button
             type="button"
-            onClick={() => setStep((s) => Math.max(1, s - 1))}
-            className={`font-pixel text-[10px] text-white/50 hover:text-white ${step === 1 ? 'invisible' : ''}`}
+            onClick={() => goToStep((s) => Math.max(1, s - 1))}
+            disabled={isTransitioning}
+            className={`font-pixel text-[10px] text-white/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 ${step === 1 ? 'invisible' : ''}`}
           >
             back
           </button>
           {step < 4 && (
             <button
               type="button"
-              onClick={() => setStep((s) => Math.min(4, s + 1))}
-              disabled={!canAdvance}
+              onClick={() => goToStep((s) => Math.min(4, s + 1))}
+              disabled={!canAdvance || isTransitioning}
               className="rounded-full bg-neon px-6 py-2 font-heading text-sm font-semibold text-white shadow-[0_0_20px_rgba(255,62,165,0.4)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_0_32px_rgba(255,62,165,0.65)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0"
             >
               next
