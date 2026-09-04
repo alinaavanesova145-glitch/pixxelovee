@@ -17,9 +17,9 @@ interface ShowcaseImage {
 const SHOWCASE_IMAGES: ShowcaseImage[] = [
   {
     src: '/showcase/preview-1.png',
-    width: 1280,
-    height: 960,
-    alt: 'A pixel-art bedroom at night, string lights and a moonlit window, with a phone on the nightstand showing the message "Where should we meet today?"',
+    width: 640,
+    height: 480,
+    alt: 'A pixel-art girl standing alone between two trees in a sunny park world, part of a real pixxelovee gift story',
     caption: 'an actual pixxelovee gift, mid-story',
   },
 ];
