@@ -27,9 +27,9 @@ pixxelovee/
 │       ├── 20260903000000_tighten_assets_insert_policy.sql   # ✅ run after schema.sql
 │       ├── 20260903000100_add_package_pricing_columns.sql    # ✅ package_hotspot_count etc. on orders
 │       ├── 20260903000200_add_relationship_type.sql          # ✅ relationship_type on orders
-│       ├── 20260903000300_gallery_opt_in.sql                 # ✅ see Privacy note below — NOT yet run live
+│       ├── 20260903000300_gallery_opt_in.sql                 # ✅ live — confirmed via SQL editor run
 │       ├── 20260904000000_reassert_orders_public_insert.sql  # ✅ live — confirmed via curl + real submit
-│       └── 20260906000000_customer_order_lookup.sql          # ✅ see Privacy note below — NOT yet run live
+│       └── 20260906000000_customer_order_lookup.sql          # ✅ live — confirmed via SQL editor run
 ├── public/
 │   ├── scenes/<vibe>/                  # background + hotspot sprite art — not sourced yet, folders empty
 │   └── sfx/                            # not sourced yet, folder empty
@@ -129,14 +129,7 @@ display. Fixed:
   is never imported anywhere in `src/`, so nothing bypasses RLS), and the tightened
   policy now naturally limits that query to opted-in rows.
 
-**This migration has not been run against the live project yet** — confirmed via a
-direct REST check: `stories.gallery_opt_in` doesn't exist and
-`get_published_story_by_slug` isn't found in the schema cache. Until it's run,
-`/story/[id]` fails safe (renders "not found" rather than erroring, since a missing
-RPC returns an error object, not a thrown exception) instead of crashing. Run
-`supabase/migrations/20260903000300_gallery_opt_in.sql` in the SQL editor, then a
-direct anon `GET /rest/v1/stories?select=id` should return `[]` for a
-non-opted-in story while its `/story/[slug]` page still loads.
+**Now live** — run against the real project via the SQL editor on 2026-09-16.
 
 Build config that a `create-next-app` scaffold normally generates
 (`tsconfig.json`, `next.config.js`, `postcss.config.js`, `.gitignore`) has
@@ -173,16 +166,8 @@ ever adding a general SELECT policy on `orders` (which would let anyone list
   status/vibe/price/timeline out, plus a link to the published story if one
   exists yet.
 
-**Also not yet run against the live project** (same pattern as the gallery
-migration) — confirmed via direct REST: the RPC returns `PGRST202` (function
-not found). Verified end-to-end with a real submit-then-track run: submission
-succeeds (the separate `orders` RLS fix from `20260904000000` **is** now live —
-confirmed both by that Playwright run and a direct anon `curl` insert), the
-order id displays and is captured correctly, and `/track` fails safe — shows
-"No order matches" rather than erroring or crashing — until the lookup RPC
-migration is applied. Run `supabase/migrations/20260906000000_customer_order_lookup.sql`
-in the SQL editor, then the same submit-then-track flow should end in "Hi
-{name}" instead.
+**Now live** — run against the real project via the SQL editor on 2026-09-16. The
+submit-then-track flow should now end in "Hi {name}" for a real order.
 
 ## How a story gets built
 
@@ -242,8 +227,8 @@ Then drop in the files from this delivery (`supabase/schema.sql`,
 2. **SQL Editor → New query** → paste `supabase/schema.sql` → **Run**. This
    creates `orders`, `stories`, `assets`, `profiles`, RLS policies, and the
    three storage buckets (`photo-references`, `story-assets`, `audio-uploads`).
-   Then run each file under `supabase/migrations/` in order (six so far:
-   tightening the `assets` insert policy; adding the package pricing
+   Then run each file under `supabase/migrations/` in order (six so far, all
+   live: tightening the `assets` insert policy; adding the package pricing
    columns; adding `relationship_type`; the gallery opt-in privacy fix;
    re-asserting the `orders` public-insert policy; and the customer
    order-lookup RPC — see below).
