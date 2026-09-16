@@ -27,7 +27,9 @@ pixxelovee/
 │       ├── 20260903000000_tighten_assets_insert_policy.sql   # ✅ run after schema.sql
 │       ├── 20260903000100_add_package_pricing_columns.sql    # ✅ package_hotspot_count etc. on orders
 │       ├── 20260903000200_add_relationship_type.sql          # ✅ relationship_type on orders
-│       └── 20260903000300_gallery_opt_in.sql                 # ✅ see Privacy note below — NOT yet run live
+│       ├── 20260903000300_gallery_opt_in.sql                 # ✅ see Privacy note below — NOT yet run live
+│       ├── 20260904000000_reassert_orders_public_insert.sql  # ✅ live — confirmed via curl + real submit
+│       └── 20260906000000_customer_order_lookup.sql          # ✅ see Privacy note below — NOT yet run live
 ├── public/
 │   ├── scenes/<vibe>/                  # background + hotspot sprite art — not sourced yet, folders empty
 │   └── sfx/                            # not sourced yet, folder empty
@@ -41,7 +43,8 @@ pixxelovee/
     │   ├── robots.ts                   # ✅ minimal robots.txt, disallows /admin
     │   ├── not-found.tsx               # ✅ styled 404
     │   ├── page.tsx                    # ✅ landing — composes the sections below
-    │   ├── create/                     # ✅ 4-step order builder (Step1Vibe … Step4EstimateSubmit)
+    │   ├── create/                     # ✅ 4-step order builder — success screen now shows the order id
+    │   ├── track/page.tsx              # ✅ order id + email -> status lookup, see Privacy note below
     │   ├── login/page.tsx              # ✅ magic-link sign-in for the admin
     │   ├── story/[id]/
     │   │   ├── page.tsx                # ✅ fetches the published story, renders viewer
@@ -150,6 +153,37 @@ code — removing `loading.tsx` would fix the status code but lose the styled
 loading state. Left as-is; worth knowing if a search engine or link-preview
 bot ever depends on the real status code for a dead story link.
 
+## Customer order lookup (migration `20260906000000`)
+
+Customers submit orders anonymously — no accounts, no sign-in — and until now had
+no way to see their own data again after hitting submit; only admins could read
+`orders`. `get_order_by_id_and_email(order_id, customer_email)` fixes that without
+ever adding a general SELECT policy on `orders` (which would let anyone list
+*every* order via `GET /rest/v1/orders`, not just their own):
+
+- Same security-definer RPC pattern as `get_published_story_by_slug` — the
+  function does the row lookup server-side and only ever returns the one
+  matching row, so there's nothing to enumerate.
+- "Ownership" is proven by knowing the order id (a random UUID, shown once on
+  the `/create` success screen, saved to `submittedOrderId` client-side) *and*
+  the checkout email — a second factor in case an id leaks via a shared
+  screenshot, matching common "order number + email" tracking UX.
+- `/create`'s success screen now displays the order id and links to `/track`.
+- `src/app/track/page.tsx` is the lookup page: order id + email in, order
+  status/vibe/price/timeline out, plus a link to the published story if one
+  exists yet.
+
+**Also not yet run against the live project** (same pattern as the gallery
+migration) — confirmed via direct REST: the RPC returns `PGRST202` (function
+not found). Verified end-to-end with a real submit-then-track run: submission
+succeeds (the separate `orders` RLS fix from `20260904000000` **is** now live —
+confirmed both by that Playwright run and a direct anon `curl` insert), the
+order id displays and is captured correctly, and `/track` fails safe — shows
+"No order matches" rather than erroring or crashing — until the lookup RPC
+migration is applied. Run `supabase/migrations/20260906000000_customer_order_lookup.sql`
+in the SQL editor, then the same submit-then-track flow should end in "Hi
+{name}" instead.
+
 ## How a story gets built
 
 An admin reviews an order at `/admin/orders/[orderId]`, uploads the
@@ -208,10 +242,11 @@ Then drop in the files from this delivery (`supabase/schema.sql`,
 2. **SQL Editor → New query** → paste `supabase/schema.sql` → **Run**. This
    creates `orders`, `stories`, `assets`, `profiles`, RLS policies, and the
    three storage buckets (`photo-references`, `story-assets`, `audio-uploads`).
-   Then run each file under `supabase/migrations/` in order (four so far:
-   tightening the `assets` insert policy, adding the package pricing
-   columns, adding `relationship_type`, and the gallery opt-in privacy fix —
-   see below).
+   Then run each file under `supabase/migrations/` in order (six so far:
+   tightening the `assets` insert policy; adding the package pricing
+   columns; adding `relationship_type`; the gallery opt-in privacy fix;
+   re-asserting the `orders` public-insert policy; and the customer
+   order-lookup RPC — see below).
 3. Sign in once as yourself (via a magic-link flow on `/login`, or by adding
    yourself directly under **Authentication → Users → Add user**), then
    promote your own row to admin:

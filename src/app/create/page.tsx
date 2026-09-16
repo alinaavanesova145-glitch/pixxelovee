@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { getPackage, packagePrice, packageTimeline } from '@/lib/pricing';
@@ -45,6 +46,7 @@ export default function CreatePage() {
   const [draftId] = useState(() => crypto.randomUUID());
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [submittedOrderId, setSubmittedOrderId] = useState<string | null>(null);
   const cooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(
@@ -136,6 +138,7 @@ export default function CreatePage() {
         if (assetError) throw assetError;
       }
 
+      setSubmittedOrderId(newOrderId);
       setStatus('success');
     } catch (err) {
       setStatus('error');
@@ -150,6 +153,20 @@ export default function CreatePage() {
         <p className="max-w-sm text-white/70">
           We&apos;ll email {draft.customerEmail} once your pixel world is ready to send.
         </p>
+
+        {submittedOrderId && (
+          <div className="mt-4 w-full max-w-sm rounded-xl border border-white/10 p-4">
+            <p className="text-xs text-white/40">Your order ID — save this to check on your story later:</p>
+            <p className="mt-1 break-all font-mono text-sm text-white">{submittedOrderId}</p>
+          </div>
+        )}
+
+        <Link
+          href="/track"
+          className="mt-2 font-pixel text-[10px] text-white/50 underline decoration-white/20 hover:text-white"
+        >
+          track an order
+        </Link>
       </main>
     );
   }
